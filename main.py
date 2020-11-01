@@ -1,7 +1,9 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_restful import Resource, Api
 from flask_pymongo import PyMongo
 import datetime
+# from flask_table import Table, Col
+from tables import Results
 
 
 app = Flask(__name__)
@@ -215,18 +217,39 @@ class AddProductMovement(Resource):
         else:
             return jsonify({"Message": "Product or Location is Not in Database"})
 
+@app.route('/view_product_movement')
+def ViewProductMovement():
+    productMovement = mongo.db.productMovement
+    output = []
+    for all_product in productMovement.find():
+        output.append({"ProductName": all_product['ProductName'],
+                       "FromLocation": all_product['FromLocation'],
+                       "ToLocation": all_product['ToLocation'],
+                       "qty": all_product['qty'],
+                       "timestamp": all_product['timestamp']})
+    table = Results(output)
+    table.border = True
+    return render_template('result.html', table=table)
 
-class ViewProductMovement(Resource):
-    def get(self):
-        productMovement = mongo.db.productMovement
-        output = []
-        for all_product in productMovement.find():
-            output.append({"ProductName": all_product['ProductName'],
-                           "FromLocation": all_product['FromLocation'],
-                           "ToLocation": all_product['ToLocation'],
-                           "qty": all_product['qty'],
-                           "timestamp": all_product['timestamp']})
-        return jsonify({'All Product Movement': output})
+# class ViewProductMovement(Resource, Table):
+#     id = Col('_id', show=False)
+#     ProductName = Col('ProductName')
+#     FromLocation = Col("FromLocation")
+#     ToLocation = Col("ToLocation")
+#     qty = Col("qty")
+#     timestamp = Col("timestamp")
+#     def get(self):
+#         productMovement = mongo.db.productMovement
+#         output = []
+#         for all_product in productMovement.find():
+#             output.append({"ProductName": all_product['ProductName'],
+#                            "FromLocation": all_product['FromLocation'],
+#                            "ToLocation": all_product['ToLocation'],
+#                            "qty": all_product['qty'],
+#                            "timestamp": all_product['timestamp']})
+#         table = ViewProductMovement(output)
+#         return jsonify(table)
+#         # return jsonify({'All Product Movement': output})
 
 
 class EditProductMovement(Resource):
@@ -299,7 +322,7 @@ api.add_resource(EditLocation, '/edit_location')
 
 
 api.add_resource(AddProductMovement, '/add_product_movement')
-api.add_resource(ViewProductMovement, '/view_product_movement')
+# api.add_resource(ViewProductMovement, '/view_product_movement')
 api.add_resource(EditProductMovement, '/edit_product_movement')
 # api.add_resource(MoveProductMovement, '/move_product_movement')
 # api.add_resource(DeleteProductMovement, '/delete_product_movement')
