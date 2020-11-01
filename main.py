@@ -255,7 +255,7 @@ def ViewProductMovement():
 class EditProductMovement(Resource):
     def post(self):
         # product = mongo.db.product
-        # location = mongo.db.location
+        location = mongo.db.location
         productMovement = mongo.db.productMovement
         ProductName = request.json['ProductName']
         FromLocation = request.json['FromLocation']
@@ -263,51 +263,53 @@ class EditProductMovement(Resource):
         qty = request.json['qty']
         qty = int(qty)
         timestamp = str(datetime.datetime.now())
-        # ProductInDatabase = product.find_one({"ProductName": ProductName})
-        # LocationInDatabase = location.find_one({"LocationName": FromLocation})
-        # ProductLocationQty = productMovement.find({"ProductName": ProductName, "$or":
-        #                                            {"FromLocation": FromLocation,
-        #                                             "ToLocation": ToLocation }})
+        if location.find_one({"LocationName": ToLocation}):
+            # ProductInDatabase = product.find_one({"ProductName": ProductName})
+            # LocationInDatabase = location.find_one({"LocationName": FromLocation})
+            # ProductLocationQty = productMovement.find({"ProductName": ProductName, "$or":
+            #                                            {"FromLocation": FromLocation,
+            #                                             "ToLocation": ToLocation }})
 
-        ProductLocationQtyId = productMovement.find_one({"ProductName": ProductName,
-                                                   "FromLocation": FromLocation})
-        QtyInDatabase = ProductLocationQtyId['qty']
-        if productMovement.find_one({"ProductName": ProductName, "FromLocation": FromLocation}):
-            if productMovement.find_one({"ProductName": ProductName, "FromLocation": FromLocation, "qty": {"$gt": qty}}):
-                updatedQty = QtyInDatabase - qty
-                NewProductMovementId = productMovement.update({"ProductName": ProductName,
-                                                               "FromLocation": FromLocation},
-                                                              {"$set": {"qty": updatedQty,
-                                                                        "ToLocation": ToLocation,
-                                                                        "timestamp": timestamp}})
-                ProductQtyAtLocationId = 0
-                ProductAtNewLocationId = 0
-                if productMovement.find_one({"ProductName": ProductName, "FromLocation": ToLocation}):
-                    ProductLocationQtyId = productMovement.find_one({"ProductName": ProductName,
-                                                                     "FromLocation": ToLocation})
-                    LocationQtyInDatabase = ProductLocationQtyId['qty']
-                    LocationQtyUpdated = LocationQtyInDatabase + qty
-                    ProductQtyAtLocationId = productMovement.update({"ProductName": ProductName,
-                                                                     "FromLocation": ToLocation},
-                                                                    {"$set": {"qty": LocationQtyUpdated,
-                                                                              # "ToLocation": ToLocation,
-                                                                              "timestamp": timestamp}}
-                                                                    )
+            ProductLocationQtyId = productMovement.find_one({"ProductName": ProductName,
+                                                       "FromLocation": FromLocation})
+            QtyInDatabase = ProductLocationQtyId['qty']
+            if productMovement.find_one({"ProductName": ProductName, "FromLocation": FromLocation}):
+                if productMovement.find_one({"ProductName": ProductName, "FromLocation": FromLocation, "qty": {"$gte": qty}}):
+                    updatedQty = QtyInDatabase - qty
+                    NewProductMovementId = productMovement.update({"ProductName": ProductName,
+                                                                   "FromLocation": FromLocation},
+                                                                  {"$set": {"qty": updatedQty,
+                                                                            "ToLocation": ToLocation,
+                                                                            "timestamp": timestamp}})
+                    ProductQtyAtLocationId = 0
+                    ProductAtNewLocationId = 0
+                    if productMovement.find_one({"ProductName": ProductName, "FromLocation": ToLocation}):
+                        ProductLocationQtyId = productMovement.find_one({"ProductName": ProductName,
+                                                                         "FromLocation": ToLocation})
+                        LocationQtyInDatabase = ProductLocationQtyId['qty']
+                        LocationQtyUpdated = LocationQtyInDatabase + qty
+                        ProductQtyAtLocationId = productMovement.update({"ProductName": ProductName,
+                                                                         "FromLocation": ToLocation},
+                                                                        {"$set": {"qty": LocationQtyUpdated,
+                                                                                  # "ToLocation": ToLocation,
+                                                                                  "timestamp": timestamp}}
+                                                                        )
+                    else:
+                        ProductAtNewLocationId = productMovement.insert({"ProductName": ProductName,
+                                                                         "FromLocation": ToLocation,
+                                                                         "ToLocation": "",
+                                                                         "qty": qty,
+                                                                         "timestamp": timestamp})
+                    if NewProductMovementId and (ProductQtyAtLocationId or ProductAtNewLocationId):
+                        return jsonify({"Message": "Product Movement is done"})
+                    else:
+                        return jsonify({"Message": "ProductMovement not done "})
                 else:
-                    ProductAtNewLocationId = productMovement.insert({"ProductName": ProductName,
-                                                                     "FromLocation": ToLocation,
-                                                                     "ToLocation": "",
-                                                                     "qty": qty,
-                                                                     "timestamp": timestamp})
-                if NewProductMovementId and (ProductQtyAtLocationId or ProductAtNewLocationId):
-                    return jsonify({"Message": "Product Movement is done"})
-                else:
-                    return jsonify({"Message": "ProductMovement not done "})
+                    return jsonify({"Message": "Only " + str(QtyInDatabase) + " Product quantity is available in database"})
             else:
-                return jsonify({"Message": "Only" + QtyInDatabase + "Product quantity is available in database"})
+                return jsonify({"Message": "Product is not available at this location"})
         else:
-            return jsonify({"Message": "Product is not available at this location"})
-
+            return jsonify({"Message": "To Location is not in database"})
 
 api.add_resource(AddProduct, '/add_product')
 api.add_resource(ViewProduct, '/view_product')
